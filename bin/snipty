@@ -1,0 +1,3 @@
+#!/bin/bash
+
+${SNIPTY_PYTHON:-python} -m snipty.command $@
