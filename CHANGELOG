@@ -1,0 +1,6 @@
+v0.1 -- 2018-06-06
+- Initial functionality
+
+v0.2 -- 2018-06-06
+- Set python3 as default running interpreter to avoid confusion
+- Add python interpreter version checking to running script

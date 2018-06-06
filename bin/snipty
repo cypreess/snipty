@@ -1,3 +1,8 @@
 #!/bin/bash
 
-${SNIPTY_PYTHON:-python} -m snipty.command $@
+if ! `${SNIPTY_PYTHON:-python3} -c 'import sys; sys.exit(1) if sys.version_info < (3, 5) else sys.exit(0)'`; then
+    echo "Your python interpreter (${SNIPTY_PYTHON:-python}) version is not supported."
+    echo "To fix it set SNIPTY_PYTHON variable with python>=3.5 executable."
+    exit 1
+fi
+${SNIPTY_PYTHON:-python3} -m snipty.command $@
