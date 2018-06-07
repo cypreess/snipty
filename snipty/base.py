@@ -137,19 +137,32 @@ class Snipty:
         return os.path.join(self.project_root, '.snipty')
 
     def config(self, create=False):
+        """Loads, checks and cache snipty config file"""
+
         if self._config is None:
+            # If there is no cached config file yet then read it
             if not os.path.exists(self.config_file_path):
                 if not create:
+                    # Some commands like freeze should not run in directories where snipty config was not present
                     raise NotExists
-
+                # Initiate empty config otherwise
                 self._store_config({})
 
+            # Read (or re-read) snipty config file
             with open(self.config_file_path, 'r') as f:
                 self._config = json.load(f)
 
+            # Ensure that some standard keys exists
             for key in ('packages_names', 'packages_urls'):
                 if key not in self._config:
                     self._config[key] = {}
+
+            # Clean-up config file by checking if snippets really exists on disk
+            for snippet_path in list(self._config['packages_names'].keys()):  # avoid error of modifing dict in the loop
+                if not (os.path.exists(os.path.join(self.project_root, snippet_path)) or os.path.exists(
+                        os.path.join(self.project_root, snippet_path + '.py'))):
+                    del self._config['packages_urls'][self._config['packages_names'][snippet_path]]
+                    del self._config['packages_names'][snippet_path]
 
         return self._config
 

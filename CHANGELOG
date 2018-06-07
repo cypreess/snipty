@@ -1,6 +1,7 @@
 (master branch)
 - Support for gist.github.com
 - Supoprt for multiple files stored in one snippet URL
+- Automatically clean up config file based on existence of physical snippets file on the disk
 
 v0.2 -- 2018-06-06
 - Set python3 as default running interpreter to avoid confusion
