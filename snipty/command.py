@@ -19,6 +19,21 @@ parser.add_argument('-p', '--path', default=os.environ.get('SNIPTY_ROOT_PATH', o
 
 subparsers = parser.add_subparsers(title='Commands', dest='command')
 
+parser_check = subparsers.add_parser('check', help='Check for snippets changes')
+
+parser_check.add_argument('-d', '--diff', action='store_true',
+                          help="Display diff results")
+
+parser_check_group = parser_check.add_mutually_exclusive_group(required=True)
+
+parser_check_group.add_argument('-r', '--requirement', type=argparse.FileType('rb', 0), metavar='<requirements file>',
+                                help='Check from the given requirements file.')
+
+parser_check_group.add_argument('snippet_url', nargs='?', help='snippets url', metavar='<snippets url>')
+
+parser_check.add_argument('snippet_name', nargs='?', metavar='<snippets name>',
+                          help='snippet name; can be a path')
+
 parser_freeze = subparsers.add_parser('freeze', help='Freeze installed snippets')
 
 parser_install = subparsers.add_parser('install', help='Install snippets')
@@ -34,7 +49,7 @@ parser_install_group.add_argument('-r', '--requirement', type=argparse.FileType(
 parser_install_group.add_argument('snippet_url', nargs='?', help='snippets url', metavar='<snippets url>')
 
 parser_install.add_argument('snippet_name', nargs='?', metavar='<snippets name>',
-                            help='snippet nape; can be a path')
+                            help='snippet name; can be a path')
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger('snipty')
@@ -53,6 +68,15 @@ def install(args):
 def freeze(args):
     """Calls snipty logic for freeze"""
     Snipty(project_root=args.path).freeze()
+
+
+def check(args):
+    """Calls snipty logic for check"""
+    im = Snipty(project_root=args.path)
+    if args.requirement:
+        im.check_from_file(args.requirement, print_diff=args.diff)
+    else:
+        im.check(name=args.snippet_name, url=args.snippet_url, print_diff=args.diff)
 
 
 if __name__ == '__main__':
@@ -74,5 +98,6 @@ if __name__ == '__main__':
     # Dispatch command
     {
         'install': install,
-        'freeze': freeze
+        'freeze': freeze,
+        'check': check,
     }[args.command](args)

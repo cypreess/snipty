@@ -2,7 +2,9 @@ import json
 import os
 import re
 import sys
+from difflib import Differ
 from functools import wraps
+from termcolor import colored
 
 import logging
 
@@ -11,7 +13,7 @@ from snipty.downloaders import BasicDownloader, BaseDownloader, DownloaderError,
 logger = logging.getLogger('snipty')
 
 
-class NotExists(Exception):
+class ConfigNotExists(Exception):
     pass
 
 
@@ -36,7 +38,11 @@ class Snipty:
         self._config = None
         self.force = force
 
+    # Helpers
+
     def _dispatch_url(self, url) -> BaseDownloader:
+        """Dispatch which downloader to use for a given URL"""
+
         for downloader in self.SUPPORTED_DOWNLOADERS:
             if downloader.match(url):
                 return downloader
@@ -54,6 +60,24 @@ class Snipty:
             if not os.path.exists(init_path):
                 open(init_path, 'a').close()
             full_path = os.path.dirname(full_path)
+
+    def _requirements_file_parser(self, file):
+        """Parses requirements file format: `<snippet path/name> from <url>\n...`"""
+        for line_no, line in enumerate(file, 1):
+            line = line.decode('utf-8').strip()
+            # skip comments and empty lines
+            if line.startswith('#') or not line:
+                continue
+
+            match = re.match('^(?P<name>.+)\s+from\s+(?P<url>https?://.*)$', line)
+
+            if not match:
+                logger.error('Error: Requirements file syntax error in line {}.'.format(line_no))
+                sys.exit(7)
+
+            yield match.group('name'), match.group('url')
+
+    # Command: install
 
     def _install_package(self, url, name):
         if not self.force and name in self.config(create=True)['packages_names']:
@@ -108,21 +132,11 @@ class Snipty:
         self._install_package(url, name)
 
     @ensure_config_saved
-    def install_from_file(self, requirements):
-        for line_no, line in enumerate(requirements, 1):
-            line = line.decode('utf-8').strip()
+    def install_from_file(self, requirements_file):
+        for name, url in self._requirements_file_parser(requirements_file):
+            self._install_package(name=name, url=url)
 
-            # skip comments and empty lines
-            if line.startswith('#') or not line:
-                continue
-
-            match = re.match('^(?P<name>.+)\s+from\s+(?P<url>https?://.*)$', line)
-
-            if not match:
-                logger.error('Error: Requirements file syntax error in line {}.'.format(line_no))
-                sys.exit(7)
-
-            self._install_package(url=match.group('url'), name=match.group('name'))
+    # Command: Freeze
 
     def freeze(self):
         try:
@@ -130,9 +144,85 @@ class Snipty:
             for package in sorted(packages):
                 print(package, 'from', packages[package])
 
-        except NotExists:
+        except ConfigNotExists:
             logger.error('Error: Snipty was not used before in this project root path: {}'.format(self.project_root))
             sys.exit(1)
+
+    # Command: Check
+
+    def _check_package(self, name: str, url: str, print_diff: bool = False) -> int:
+        try:
+
+            if name not in self.config()['packages_names']:
+                logger.warning('❌ Snippet {} is not installed.'.format(name))
+                return 1
+
+            downloader_class = self._dispatch_url(url)
+
+            try:
+                tmp_path = downloader_class.download(url=url)
+            except DownloaderError as e:
+                logger.error("Error: Snippet {} cannot be checked - {}.".format(name, str(e)))
+                sys.exit(1)
+
+            snippet_path = os.path.join(self.project_root, name)
+
+            if os.path.isdir(tmp_path) and os.path.isdir(snippet_path):
+            # Compare two directories
+
+            # FIXME: Implement comparison of two directories file by file
+                pass
+
+            elif os.path.isfile(tmp_path) and os.path.isfile(snippet_path + '.py'):
+                # Compare two files
+
+                d = Differ()
+                with open(snippet_path + '.py', 'r') as old_file:
+                    with open(tmp_path, 'r') as new_file:
+
+                        old_content = old_file.read()
+                        new_content = new_file.read()
+
+                        result = list(d.compare(old_content.split('\n'), new_content.split('\n')))
+
+                        if any((x[0:2] != '  ' for x in result)):
+                            logger.warning('❌ Snippet {} has changed.'.format(name))
+                            if print_diff:
+                                for line in result:
+                                    if line.startswith('+ '):
+                                        print(colored(line, 'green'))
+                                    elif line.startswith('- '):
+                                        print(colored(line, 'red'))
+                                    else:
+                                        print(line)
+                            return 1
+
+            else:
+                # Mismatch of types file-dir
+                logger.warning('❌ Snippet {} has changed between single and multi file.'.format(name))
+                return 1
+
+            logger.info('✔ Snippet {} present and up to date.'.format(name))
+            return 0
+
+        except ConfigNotExists:
+            logger.error('Error: Snipty was not used before in this project root path: {}'.format(self.project_root))
+            sys.exit(1)
+
+    def check(self, name: str, url: str, print_diff=False):
+        """Check for single package"""
+        exit_status = self._check_package(name=name, url=url, print_diff=print_diff)
+        sys.exit(exit_status)
+
+    def check_from_file(self, requirements_file, print_diff=False):
+        """Will return exit status equal to number of differences found"""
+
+        exit_status = 0
+        for name, url in self._requirements_file_parser(requirements_file):
+            exit_status += self._check_package(name=name, url=url, print_diff=print_diff)
+        sys.exit(exit_status)
+
+    # Config helpers
 
     @property
     def config_file_path(self):
@@ -146,7 +236,7 @@ class Snipty:
             if not os.path.exists(self.config_file_path):
                 if not create:
                     # Some commands like freeze should not run in directories where snipty config was not present
-                    raise NotExists
+                    raise ConfigNotExists
                 # Initiate empty config otherwise
                 self._store_config({})
 
@@ -176,5 +266,5 @@ class Snipty:
         try:
             config = self.config()
             self._store_config(config)
-        except NotExists:
+        except ConfigNotExists:
             pass
