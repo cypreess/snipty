@@ -117,8 +117,10 @@ class Snipty:
                 continue
 
             match = re.match('^(?P<name>.+)\s+from\s+(?P<url>https?://.*)$', line)
+
             if not match:
                 logger.error('Error: Requirements file syntax error in line {}.'.format(line_no))
+                sys.exit(7)
 
             self._install_package(url=match.group('url'), name=match.group('name'))
 
