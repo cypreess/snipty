@@ -1,11 +1,11 @@
 # snipty
 
-Snipty is a handy package manager tool that allows to organize snippets in the similar way how pip is 
+Snipty is a handy package manager tool that helps you to organize snippets in the similar way how pip is 
 handling python packages and ansible-galaxy is handling roles. The motivation behind snipty is to make 
-snippets DRY again. There is lots of good code to small to be legitimate packages on their own that you 
-end up copy over and over again to your codebase. Snipty wants to:
+snippets DRY again. There is a lot of good code too small to be legitimate packages on their own, that you 
+end up copying over and over again to your codebase. Snipty wants to:
 
-* automate the process of downloading them,
+* automate the process of downloading snippets,
 * create a `snippets.txt` file to explicitly enumerate your snippet dependencies in the code,
 * allow easy tracking of snippets changes.
 
@@ -21,7 +21,7 @@ Install a single snippet into current directory project using providing path/nam
     $ ls helpers
     __init__.py  example_1.py
     
-Note that your snippet will have automatically prepended `.py` extension and `__init__.py` files will be created
+Note that your snippet will automatically have `.py` extension prepended and `__init__.py` files will be created
 on all subdirectories up to the project root path, so your snippet will be importable from python.
 
 
@@ -45,8 +45,8 @@ Install snippets from `snippets.txt` file:
 
 ### Snippets with multiple files inside
 
-Some snippet sites like gist allows to define multiple files under single URL. Snipty handles this by creating 
-a directory (rather than a `.py` module file) and places all snippet files under this directory.
+Some snippet sites - like gist - allows you to define multiple files under a single URL. Snipty handles this by creating 
+a directory (rather than a `.py` module file) and places all snippet files inside this directory.
 
 Install snippets that have multiple files inside:
 
