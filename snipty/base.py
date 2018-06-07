@@ -6,7 +6,7 @@ from functools import wraps
 
 import logging
 
-from snipty.downloaders import BasicDownloader, BaseDownloader, DownloaderError, GhostbinDownloader
+from snipty.downloaders import BasicDownloader, BaseDownloader, DownloaderError, GhostbinDownloader, GistDownloader
 
 logger = logging.getLogger('snipty')
 
@@ -29,7 +29,7 @@ def ensure_config_saved(f):
 class Snipty:
     """Manages whole process of tracking what is installed and calling specialized downloaders"""
 
-    SUPPORTED_DOWNLOADERS = [GhostbinDownloader, BasicDownloader]
+    SUPPORTED_DOWNLOADERS = [GistDownloader, GhostbinDownloader, BasicDownloader]
 
     def __init__(self, project_root, force=False):
         self.project_root = project_root
@@ -92,8 +92,11 @@ class Snipty:
         if package_name is not None:
             os.rename(tmp_path, os.path.join(self.project_root, package_dir, package_name + '.py'))
         else:
-            # FIXME: move many files
-            pass
+            for file_name in os.listdir(tmp_path):
+                os.rename(
+                    os.path.join(tmp_path, file_name),
+                    os.path.join(self.project_root, package_dir, file_name)
+                )
 
         self.config(create=True)['packages_names'][name] = url
         self.config(create=True)['packages_urls'][url] = name

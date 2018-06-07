@@ -1,6 +1,7 @@
 import logging
 import os
 import tempfile
+from urllib.parse import urlparse
 
 import requests
 
@@ -15,7 +16,7 @@ class BaseDownloader:
 
     # @abstractmethod
     @classmethod
-    def match(cls, url: str):
+    def match(cls, url: str) -> bool:
         """Check if given downloader can handle this request"""
         raise NotImplementedError
 
@@ -31,21 +32,30 @@ class BasicDownloader(BaseDownloader):
     Basic downloader will get any file that is plain/text type and HTTP status code was 200
     """
 
-    ACCEPTED_CONTENT_TYPE = 'text/plain'
+    ACCEPTED_CONTENT_TYPE = ['text/plain', 'application/x-python']
     ACCEPTED_HTTP_STATUS = 200
 
     @classmethod
-    def match(cls, url: str):
+    def match(cls, url: str) -> bool:
         return True
 
     @classmethod
-    def _fetch_file(self, url):
+    def _valid_content_type(cls, content_type: str) -> bool:
+        for entry in cls.ACCEPTED_CONTENT_TYPE:
+            if content_type.startswith(entry):
+                return True
+        return False
+
+    @classmethod
+    def _fetch_file(cls, url: str) -> str:
         with tempfile.NamedTemporaryFile(delete=False, dir=os.environ.get('SNIPTY_TMP')) as destination_file:
             response = requests.get(url)
+
             if response.status_code != BasicDownloader.ACCEPTED_HTTP_STATUS:
                 raise DownloaderError('could not fetch {} (HTTP{})'.format(url, response.status_code))
-            if not response.headers['content-type'].startswith(BasicDownloader.ACCEPTED_CONTENT_TYPE):
-                raise DownloaderError('not a {} format.'.format(BasicDownloader.ACCEPTED_CONTENT_TYPE))
+
+            if not cls._valid_content_type(response.headers['content-type']):
+                raise DownloaderError('not a {} format.'.format(", ".join(cls.ACCEPTED_CONTENT_TYPE)))
 
             for block in response.iter_content(1024):
                 destination_file.write(block)
@@ -65,7 +75,7 @@ class GhostbinDownloader(BasicDownloader):
     """
 
     @classmethod
-    def match(cls, url: str):
+    def match(cls, url: str) -> bool:
         return url.startswith('https://ghostbin.com/paste/')
 
     @classmethod
@@ -75,3 +85,48 @@ class GhostbinDownloader(BasicDownloader):
             url += '/raw'
 
         return super().download(url)
+
+
+class GistDownloader(BaseDownloader):
+    """
+    Support for gist.github.com via REST API v3
+    """
+
+    @classmethod
+    def match(cls, url: str) -> bool:
+        return urlparse(url).netloc == 'gist.github.com'
+
+    @classmethod
+    def _extract_gist_id(self, url: str) -> str:
+        return urlparse(url).path.split('/')[-1]
+
+    @classmethod
+    def download(cls, url: str) -> str:
+        # Fetch gist from API
+        api_url = 'https://api.github.com/gists/{}'.format(cls._extract_gist_id(url))
+        response = requests.get(api_url)
+
+        if response.status_code != 200:
+            raise DownloaderError('could not fetch {} (HTTP{})'.format(api_url, response.status_code))
+
+        data = response.json()
+
+        if len(data['files']) == 1:
+            # Single file gist
+            with tempfile.NamedTemporaryFile(mode='w', delete=False,
+                                             dir=os.environ.get('SNIPTY_TMP')) as destination_file:
+                file_key = list(data['files'].keys())[0]
+                destination_file.write(data['files'][file_key]['content'])
+                return destination_file.name
+
+        elif len(data['files']) > 1:
+            # Multi file gist
+            destination_directory = tempfile.mkdtemp(dir=os.environ.get('SNIPTY_TMP'))
+            for file_key in data['files']:
+                file_path = os.path.join(destination_directory, data['files'][file_key]['filename'])
+                with open(file_path, 'w') as file_handler:
+                    file_handler.write(data['files'][file_key]['content'])
+            return destination_directory
+        else:
+            # Some error
+            raise DownloaderError('there is no snippets in this gist')
