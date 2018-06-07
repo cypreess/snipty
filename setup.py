@@ -6,7 +6,7 @@ setup(
     version=__VERSION__,
     packages=['snipty'],
     python_requires='>3.6',
-    url='',
+    url='https://github.com/cypreess/snipty',
     license='MIT',
     author='Kris Dorosz',
     author_email='cypreess@gmail.com',
