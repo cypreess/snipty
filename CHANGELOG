@@ -1,6 +1,11 @@
-v0.1 -- 2018-06-06
-- Initial functionality
+(master branch)
+- Support for gist.github.com
+- Supoprt for multiple files stored in one snippet URL
 
 v0.2 -- 2018-06-06
 - Set python3 as default running interpreter to avoid confusion
 - Add python interpreter version checking to running script
+
+v0.1 -- 2018-06-06
+- Initial functionality
+
