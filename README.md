@@ -79,7 +79,25 @@ another one (snipty will automatically detect this):
     $ snipty install https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5 snippets/b
     ✔ ️ Snippet snippets/b installed from https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5
 
+### Snippets maintanance
 
+To check if your snippets were updated comparing to what you have in your codebase you can simply run:
+
+    $ snipty check --diff  https://gist.github.com/cypreess/6670a99b2c1cd7b52b24057f68a1debd snippets/left_pad
+    ✔ Snippet snippets/left_pad present and up to date.
+
+You can turn off diff displaying by adding argument `--diff`:
+
+    snipty check --diff  https://gist.github.com/cypreess/6670a99b2c1cd7b52b24057f68a1debd snippets/left_pad
+    ❌ Snippet snippets/left_pad file left_pad.py is not present.
+    ❌ Snippet snippets/left_pad file middleware.py has changed.
+      class EmptyMiddleware:
+    +   middleware_empty = True
+    -   pass
+
+Check will produce exit status of 0 if all snippets are unchanged, otherwise exit status will be equal to number of 
+changed snippets count.
+    
 ## Helpful environment variables:
 
 * `SNIPTY_PYTHON` - python interpreter that snipty should use to run itself
