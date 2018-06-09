@@ -1,12 +1,13 @@
+import filecmp
 import json
+import logging
 import os
 import re
 import sys
 from difflib import Differ
 from functools import wraps
-from termcolor import colored
 
-import logging
+from termcolor import colored
 
 from snipty.downloaders import BasicDownloader, BaseDownloader, DownloaderError, GhostbinDownloader, GistDownloader
 
@@ -90,9 +91,10 @@ class Snipty:
                     self.config(create=True)['packages_urls'][url], url))
             sys.exit(3)
 
-        if not self.force and os.path.exists(os.path.join(self.project_root, name + '.py')) or os.path.exists(
-                os.path.join(self.project_root, name)):
+        if not self.force and (os.path.exists(os.path.join(self.project_root, name + '.py')) or os.path.exists(
+                os.path.join(self.project_root, name))):
             logger.error("Error: Cannot install snippet '{}' because destination location already exists.".format(name))
+            sys.exit(3)
 
         downloader_class = self._dispatch_url(url)
 
@@ -150,6 +152,25 @@ class Snipty:
 
     # Command: Check
 
+    def _print_diff(self, old_path, new_path):
+        d = Differ()
+
+        with open(old_path, 'r') as old_file:
+            with open(new_path, 'r') as new_file:
+
+                old_content = old_file.read()
+                new_content = new_file.read()
+
+                result = list(d.compare(old_content.split('\n'), new_content.split('\n')))
+
+                for line in result:
+                    if line.startswith('+ '):
+                        print(colored(line, 'green'), file=sys.stderr)
+                    elif line.startswith('- '):
+                        print(colored(line, 'red'), file=sys.stderr)
+                    else:
+                        print(line, file=sys.stderr)
+
     def _check_package(self, name: str, url: str, print_diff: bool = False) -> int:
         try:
 
@@ -168,35 +189,42 @@ class Snipty:
             snippet_path = os.path.join(self.project_root, name)
 
             if os.path.isdir(tmp_path) and os.path.isdir(snippet_path):
-            # Compare two directories
+                # Compare two directories
 
-            # FIXME: Implement comparison of two directories file by file
-                pass
+                files_changed_sum = 0
+
+                result = filecmp.dircmp(snippet_path, tmp_path)
+
+                if result.diff_files or result.right_only:
+
+                    files_of_interest = result.same_files + result.diff_files + result.right_only
+                    files_of_interest.sort()
+
+                    for f in files_of_interest:
+                        if f in result.same_files:
+                            logger.info('✔ Snippet {} file {} did not changed.'.format(name, f))
+                        elif f in result.diff_files:
+                            logger.info('❌ Snippet {} file {} has changed.'.format(name, f))
+                            files_changed_sum += 1
+                            if print_diff:
+                                self._print_diff(
+                                    os.path.join(snippet_path, f),
+                                    os.path.join(tmp_path, f),
+                                )
+                        elif f in result.right_only:
+                            files_changed_sum += 1
+                            logger.info('❌ Snippet {} file {} is not present.'.format(name, f))
+                if files_changed_sum > 0:
+                    return 1
 
             elif os.path.isfile(tmp_path) and os.path.isfile(snippet_path + '.py'):
                 # Compare two files
 
-                d = Differ()
-                with open(snippet_path + '.py', 'r') as old_file:
-                    with open(tmp_path, 'r') as new_file:
-
-                        old_content = old_file.read()
-                        new_content = new_file.read()
-
-                        result = list(d.compare(old_content.split('\n'), new_content.split('\n')))
-
-                        if any((x[0:2] != '  ' for x in result)):
-                            logger.warning('❌ Snippet {} has changed.'.format(name))
-                            if print_diff:
-                                for line in result:
-                                    if line.startswith('+ '):
-                                        print(colored(line, 'green'))
-                                    elif line.startswith('- '):
-                                        print(colored(line, 'red'))
-                                    else:
-                                        print(line)
-                            return 1
-
+                if not filecmp.cmp(snippet_path + '.py', tmp_path, shallow=False):
+                    logger.warning('❌ Snippet {} has changed.'.format(name))
+                    if print_diff:
+                        self._print_diff(snippet_path + '.py', tmp_path)
+                    return 1
             else:
                 # Mismatch of types file-dir
                 logger.warning('❌ Snippet {} has changed between single and multi file.'.format(name))
