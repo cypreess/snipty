@@ -1,13 +1,15 @@
 # snipty
 
 Snipty is a handy package manager tool that helps you to organize snippets in the similar way how pip is 
-handling python packages and ansible-galaxy is handling roles. The motivation behind snipty is to make 
+handling python packages or ansible-galaxy is handling roles. The motivation behind snipty is to make 
 snippets DRY again. There is a lot of good code too small to be legitimate packages on their own, that you 
 end up copying over and over again to your codebase. Snipty wants to:
 
 * automate the process of downloading snippets,
-* create a `snippets.txt` file to explicitly enumerate your snippet dependencies in the code,
+* manage a `snippets.txt` file to explicitly enumerate your snippet dependencies in the code,
 * allow easy tracking of snippets changes.
+
+You can read about [how Snipty was born and what problem it tries to address](https://medium.com/@krisdorosz/how-to-use-code-snippets-and-stay-sane-987a2a54c571).
 
 ## Quickstart
 
