@@ -9,7 +9,7 @@ end up copying over and over again to your codebase. Snipty wants to:
 * manage a `snippets.txt` file to explicitly enumerate your snippet dependencies in the code,
 * allow easy tracking of snippets changes.
 
-You can read about [how Snipty was born and what problem it tries to address](https://medium.com/@krisdorosz/how-to-use-code-snippets-and-stay-sane-987a2a54c571).
+You can read about [how Snipty was born and what problem it tries to address](https://medium.com/@krisdorosz/how-to-use-code-snippets-and-stay-sane-987a2a54c571) in the Medium post.
 
 ## Quickstart
 
