@@ -1,3 +1,7 @@
+v0.9 -- 2018-10-30
+- Changed the idea how snipty.txt and .snipty works (backward not compatible)
+- Black formatting
+
 v0.3 -- 2018-06-09
 - Support for gist.github.com
 - Support for multiple files stored in one snippet URL

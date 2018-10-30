@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 import requests
 
-logger = logging.getLogger('snipty')
+logger = logging.getLogger("snipty")
 
 
 class DownloaderError(Exception):
@@ -32,7 +32,7 @@ class BasicDownloader(BaseDownloader):
     Basic downloader will get any file that is plain/text type and HTTP status code was 200
     """
 
-    ACCEPTED_CONTENT_TYPE = ['text/plain', 'application/x-python']
+    ACCEPTED_CONTENT_TYPE = ["text/plain", "application/x-python"]
     ACCEPTED_HTTP_STATUS = 200
 
     @classmethod
@@ -48,14 +48,20 @@ class BasicDownloader(BaseDownloader):
 
     @classmethod
     def _fetch_file(cls, url: str) -> str:
-        with tempfile.NamedTemporaryFile(delete=False, dir=os.environ.get('SNIPTY_TMP')) as destination_file:
+        with tempfile.NamedTemporaryFile(
+            delete=False, dir=os.environ.get("SNIPTY_TMP")
+        ) as destination_file:
             response = requests.get(url)
 
             if response.status_code != BasicDownloader.ACCEPTED_HTTP_STATUS:
-                raise DownloaderError('could not fetch {} (HTTP{})'.format(url, response.status_code))
+                raise DownloaderError(
+                    "could not fetch {} (HTTP{})".format(url, response.status_code)
+                )
 
-            if not cls._valid_content_type(response.headers['content-type']):
-                raise DownloaderError('not a {} format.'.format(", ".join(cls.ACCEPTED_CONTENT_TYPE)))
+            if not cls._valid_content_type(response.headers["content-type"]):
+                raise DownloaderError(
+                    "not a {} format.".format(", ".join(cls.ACCEPTED_CONTENT_TYPE))
+                )
 
             for block in response.iter_content(1024):
                 destination_file.write(block)
@@ -76,13 +82,13 @@ class GhostbinDownloader(BasicDownloader):
 
     @classmethod
     def match(cls, url: str) -> bool:
-        return url.startswith('https://ghostbin.com/paste/')
+        return url.startswith("https://ghostbin.com/paste/")
 
     @classmethod
     def download(cls, url: str) -> str:
         # Use native raw support fo ghostbin
-        if not url.endswith('/raw'):
-            url += '/raw'
+        if not url.endswith("/raw"):
+            url += "/raw"
 
         return super().download(url)
 
@@ -94,39 +100,44 @@ class GistDownloader(BaseDownloader):
 
     @classmethod
     def match(cls, url: str) -> bool:
-        return urlparse(url).netloc == 'gist.github.com'
+        return urlparse(url).netloc == "gist.github.com"
 
     @classmethod
     def _extract_gist_id(self, url: str) -> str:
-        return urlparse(url).path.split('/')[-1]
+        return urlparse(url).path.split("/")[-1]
 
     @classmethod
     def download(cls, url: str) -> str:
         # Fetch gist from API
-        api_url = 'https://api.github.com/gists/{}'.format(cls._extract_gist_id(url))
+        api_url = "https://api.github.com/gists/{}".format(cls._extract_gist_id(url))
         response = requests.get(api_url)
 
         if response.status_code != 200:
-            raise DownloaderError('could not fetch {} (HTTP{})'.format(api_url, response.status_code))
+            raise DownloaderError(
+                "could not fetch {} (HTTP{})".format(api_url, response.status_code)
+            )
 
         data = response.json()
 
-        if len(data['files']) == 1:
+        if len(data["files"]) == 1:
             # Single file gist
-            with tempfile.NamedTemporaryFile(mode='w', delete=False,
-                                             dir=os.environ.get('SNIPTY_TMP')) as destination_file:
-                file_key = list(data['files'].keys())[0]
-                destination_file.write(data['files'][file_key]['content'])
+            with tempfile.NamedTemporaryFile(
+                mode="w", delete=False, dir=os.environ.get("SNIPTY_TMP")
+            ) as destination_file:
+                file_key = list(data["files"].keys())[0]
+                destination_file.write(data["files"][file_key]["content"])
                 return destination_file.name
 
-        elif len(data['files']) > 1:
+        elif len(data["files"]) > 1:
             # Multi file gist
-            destination_directory = tempfile.mkdtemp(dir=os.environ.get('SNIPTY_TMP'))
-            for file_key in data['files']:
-                file_path = os.path.join(destination_directory, data['files'][file_key]['filename'])
-                with open(file_path, 'w') as file_handler:
-                    file_handler.write(data['files'][file_key]['content'])
+            destination_directory = tempfile.mkdtemp(dir=os.environ.get("SNIPTY_TMP"))
+            for file_key in data["files"]:
+                file_path = os.path.join(
+                    destination_directory, data["files"][file_key]["filename"]
+                )
+                with open(file_path, "w") as file_handler:
+                    file_handler.write(data["files"][file_key]["content"])
             return destination_directory
         else:
             # Some error
-            raise DownloaderError('there is no snippets in this gist')
+            raise DownloaderError("there is no snippets in this gist")
