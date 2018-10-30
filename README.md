@@ -1,58 +1,49 @@
 # snipty
 
-Snipty is a handy package manager tool that helps you to organize snippets in the similar way how pip is 
-handling python packages or ansible-galaxy is handling roles. The motivation behind snipty is to make 
+Snipty is a handy package manager tool that helps you to keep track of code snippets you use in codebase.
+Snipty allows to easy install dependent snippets into your code from `snipty.yml` file, similary how pip
+can install dependencies from requirements.txt.
+
+The motivation behind snipty is to make 
 snippets DRY again. There is a lot of good code too small to be legitimate packages on their own, that you 
 end up copying over and over again to your codebase. Snipty wants to:
 
 * automate the process of downloading snippets,
-* manage a `snippets.txt` file to explicitly enumerate your snippet dependencies in the code,
-* allow easy tracking of snippets changes.
+* manage a `snipty.yml` file to explicitly enumerate your snippet dependencies in the code,
+* allow easy tracking of snippets changes when they are made in your codebase and/or in the snippet source.
 
 You can read about [how Snipty was born and what problem it tries to address](https://medium.com/@krisdorosz/how-to-use-code-snippets-and-stay-sane-987a2a54c571) in the Medium post.
 
 ## Quickstart
 
-### Single snippet installation
+### Snippet installation
 
-Install a single snippet into current directory project using providing path/name as destination:
+We assume you store snippets somewhere in the snippets websites (like Github gist or ghostbin).
+To install snippet in your code base go to the codebase root and type:
 
-    $ snipty install https://ghostbin.com/paste/egbue helpers/example_1
+    $ snipty install  helpers/example_1.py https://ghostbin.com/paste/egbue
     ✔️ Snippet helpers/example_1 installed from https://ghostbin.com/paste/egbue
     
     $ ls helpers
     __init__.py  example_1.py
     
-Note that your snippet will automatically have `.py` extension prepended and `__init__.py` files will be created
-on all subdirectories up to the project root path, so your snippet will be importable from python.
+Snipty detects that this is python snippet (by given extension) 
+and automatically creates  `__init__.py` on all subdirectories up to the project root path,
+so your snippet will be importable from python.
 
 
-### Handling requirements file
+At this point a special file `snipty.yml` was created in your codebase. You should track this file in your
+code versioning system.
 
-Snipty remembers what was installed (and where), by dumping some JSON into `.snipty` in your project 
-root (current directory).
-
-
-Create a `snippets.txt` files with snippets requirements:
-
-    $ snipty freeze > snippets.txt
-    
-    $ cat snippets.txt
-    helpers/example_1 from https://ghostbin.com/paste/egbue
-
-Install snippets from `snippets.txt` file:
-
-    $ snipty install -r snipty.txt
-    $ Snippet 'helpers/example_1' has been already installed.
 
 ### Snippets with multiple files inside
 
 Some snippet sites - like gist - allows you to define multiple files under a single URL. Snipty handles this by creating 
-a directory (rather than a `.py` module file) and places all snippet files inside this directory.
+a directory (rather than a single file) and places all snippet files inside this directory.
 
 Install snippets that have multiple files inside:
 
-    $ snipty install https://gist.github.com/cypreess/6670a99b2c1cd7b52b24057f68a1debd helpers/django
+    $ snipty install helpers/django https://gist.github.com/cypreess/6670a99b2c1cd7b52b24057f68a1debd 
     ✔️ Snippet helpers/django installed from https://gist.github.com/cypreess/6670a99b2c1cd7b52b24057f68a1debd
     
     $ ls helpers/django
@@ -64,33 +55,28 @@ Install snippets that have multiple files inside:
 Once snippet is installed it cannot be installed again to different location as snipty will warn you about 
 possible code duplication.
 
-    $ snipty install https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5 snippets/a
+    $ snipty install snippets/a https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5 
     ✔️ Snippet snippets/a installed from https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5
-    
-    $ snipty install https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5 snippets/b
-    Error: Snippet 'snippets/a' has been already from the same source https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5.
 
-To move snippet to other location simply delete the snippet from the previous location and reinstall snippet to 
-another one (snipty will automatically detect this):
+    $ snipty install snippets/a https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5 
+    Snippet 'snippets/a' has been already installed.
 
-    $ snipty install https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5 snippets/a
-    ✔️ Snippet snippets/a installed from https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5
-    
-    $ rm snippets/a.py
-    
-    $ snipty install https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5 snippets/b
-    ✔ ️ Snippet snippets/b installed from https://gist.github.com/cypreess/bc7b4d7c46b9a4cf1411c87b5c65d3d5
 
-### Snippets maintanance
+### Snippets maintenance
 
-To check if your snippets were updated comparing to what you have in your codebase you can simply run:
+To check if your snippets in your codebase differ from the remote links type:
 
-    $ snipty check --diff  https://gist.github.com/cypreess/6670a99b2c1cd7b52b24057f68a1debd snippets/left_pad
+    $ snipty check 
     ✔ Snippet snippets/left_pad present and up to date.
 
-You can turn off diff displaying by adding argument `--diff`:
+or for single package:
 
-    snipty check --diff  https://gist.github.com/cypreess/6670a99b2c1cd7b52b24057f68a1debd snippets/left_pad
+    $ snipty check snippets/left_pad
+    ✔ Snippet snippets/left_pad present and up to date.
+
+You can turn on diff displaying by adding argument `--diff`:
+
+    snipty check --diff snippets/left_pad
     ❌ Snippet snippets/left_pad file left_pad.py is not present.
     ❌ Snippet snippets/left_pad file middleware.py has changed.
       class EmptyMiddleware:
@@ -106,7 +92,6 @@ changed snippets count.
 * `SNIPTY_ROOT_PATH` - default snipty behaviour is to treat all relative paths according to current directory; 
 it can be ovveriden using this path or `-p`/`--path` argument
 * `SNIPTY_TMP` - ovveride temporary directory for downloading snippets
-
 
 ## Help needed
 
