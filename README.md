@@ -1,15 +1,13 @@
 # snipty  [![CircleCI](https://circleci.com/gh/cypreess/snipty/tree/master.svg?style=svg)](https://circleci.com/gh/cypreess/snipty/tree/master)
 
 
-Snipty is a handy package manager tool that helps you to keep track of code snippets you use in codebase.
-Snipty allows to easy install dependent snippets into your code from `snipty.yml` file, similary how pip
-can install dependencies from requirements.txt.
+Snipty is a handy "like a package manager" tool that helps you to keep track of code snippets in a codebase.
 
-The motivation behind snipty is to make 
+The motivation behind Snipty is to make 
 snippets DRY again. There is a lot of good code too small to be legitimate packages on their own, that you 
 end up copying over and over again to your codebase. Snipty wants to:
 
-* automate the process of downloading snippets,
+* automate the process of downloading snippets from remote snippet websites,
 * manage a `snipty.yml` file to explicitly enumerate your snippet dependencies in the code,
 * allow easy tracking of snippets changes when they are made in your codebase and/or in the snippet source.
 
