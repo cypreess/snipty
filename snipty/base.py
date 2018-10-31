@@ -27,11 +27,17 @@ class ConfigNotExists(Exception):
     pass
 
 
+class SniptyCriticalError(Exception):
+    def __init__(self, code, *args: object, **kwargs: object) -> None:
+        self.code = code
+        super().__init__(*args, **kwargs)
+
+
 def ensure_config_saved(f):
     @wraps(f)
     def wrapped(self, *args, **kwargs):
         try:
-            f(self, *args, **kwargs)
+            return f(self, *args, **kwargs)
         finally:
             self.store_config()
 
@@ -42,14 +48,14 @@ def ensure_config_exists(f):
     @wraps(f)
     def wrapped(self, *args, **kwargs):
         try:
-            f(self, *args, **kwargs)
+            return f(self, *args, **kwargs)
         except ConfigNotExists:
             logger.error(
                 "Error: Snipty was not used before in this project root path: {}".format(
                     self.project_root
                 )
             )
-            sys.exit(1)
+            raise SniptyCriticalError(1)
 
     return wrapped
 
@@ -75,7 +81,7 @@ class Snipty:
             if downloader.match(url):
                 return downloader
         logger.error("Error: cannot find downloader for provided url {}".format(url))
-        sys.exit(4)
+        raise SniptyCriticalError(4)
 
     def _prepare_directory(self, root_path, package_dir, create_init_py=False):
         """Create a tree of directories and place __init__.py files"""
@@ -98,13 +104,13 @@ class Snipty:
         """
         if not force and name in self.config(create=True):
             logger.warning("Snippet '{}' has been already installed.".format(name))
-            return
+            raise SniptyCriticalError(3)
 
         if not force and url in self.config(create=True).values():
             logger.error(
                 "Error: Snippet from this url {} was already installed.".format(url)
             )
-            sys.exit(3)
+            raise SniptyCriticalError(3)
 
         if not force and (
             os.path.exists(os.path.join(self.project_root, name))
@@ -114,7 +120,7 @@ class Snipty:
                 "Error: Cannot install snippet '{}' because destination location "
                 "already exists (use --force to override).".format(name)
             )
-            sys.exit(3)
+            raise SniptyCriticalError(3)
 
         downloader_class = self._dispatch_url(url)
 
@@ -124,7 +130,7 @@ class Snipty:
             logger.error(
                 "Error: Snippet {} cannot be installed - {}.".format(name, str(e))
             )
-            sys.exit(6)
+            raise SniptyCriticalError(6)
 
         # tmp_path can be a single file or directory (support for snippets containing many files)
 
@@ -172,7 +178,7 @@ class Snipty:
                 installed_anything = True
 
         if not installed_anything:
-            print("No missing snippets to install!")
+            logger.warning("No missing snippets to install!")
 
     # Command: List
 
@@ -197,20 +203,16 @@ class Snipty:
 
     @ensure_config_exists
     def list(self):
-        not_installed = []
+        result = {"installed": [], "not_installed": []}
+
         for package, url in self.config().items():
             package_hash = self._package_checksum(package)
             if package_hash is None:
-                not_installed.append((package, url))
+                result["not_installed"].append((package, url))
             else:
-                print(package, package_hash, url, sep="\t")
-        if not_installed:
-            print(
-                "\n! Following packages are NOT installed in the codebase"
-                " (you can install them running by $ snipty install)"
-            )
-            for package, url in not_installed:
-                print(package, url, sep="\t")
+                result["installed"].append((package, package_hash, url))
+
+        return result
 
     # Command: Uninstall
 
@@ -219,15 +221,17 @@ class Snipty:
     def uninstall(self, name: str):
         if name not in self.config():
             logger.warning("❌ Snippet {} does not exists.".format(name))
-            sys.exit(1)
+            raise SniptyCriticalError(1)
 
-        if not os.path.exists(self._get_package_full_path(name)):
+        if os.path.isfile(self._get_package_full_path(name)):
+            os.remove(self._get_package_full_path(name))
+        elif os.path.isdir(self._get_package_full_path(name)):
+            shutil.rmtree(self._get_package_full_path(name))
+        else:
             logger.warning(
                 "❌ Snippet {} is not installed. You can still untrack it.".format(name)
             )
-            sys.exit(1)
-
-        shutil.rmtree(self._get_package_full_path(name))
+            raise SniptyCriticalError(1)
 
         del self.config()[name]
         logger.info("✔ Snippet {} has been uninstalled.".format(name))
@@ -239,7 +243,7 @@ class Snipty:
     def untrack(self, name: str):
         if name not in self.config():
             logger.warning("❌ Snippet {} does not exists.".format(name))
-            sys.exit(1)
+            raise SniptyCriticalError(1)
 
         del self.config()[name]
         logger.info("✔ Snippet {} has been untracked.".format(name))
@@ -284,7 +288,7 @@ class Snipty:
                 logger.error(
                     "Error: Snippet {} cannot be checked - {}.".format(name, str(e))
                 )
-                sys.exit(1)
+                raise SniptyCriticalError(1)
 
             snippet_path = os.path.join(self.project_root, name)
 
@@ -351,14 +355,13 @@ class Snipty:
                     self.project_root
                 )
             )
-            sys.exit(1)
+            raise SniptyCriticalError(1)
 
     @ensure_config_exists
     def check(self, name: str, print_diff=False):
         """Check for single package"""
 
-        exit_status = self._check_package(name=name, print_diff=print_diff)
-        sys.exit(exit_status)
+        return self._check_package(name=name, print_diff=print_diff)
 
     def check_all(self, print_diff=False):
         """Will return exit status equal to number of differences found"""
@@ -366,7 +369,8 @@ class Snipty:
         exit_status = 0
         for name in self.config():
             exit_status += self._check_package(name=name, print_diff=print_diff)
-        sys.exit(exit_status)
+
+        return exit_status
 
     # Config helpers
 

@@ -3,7 +3,7 @@ import os
 import logging
 import sys
 
-from snipty.base import Snipty
+from snipty.base import Snipty, SniptyCriticalError
 from . import __VERSION__
 
 parser = argparse.ArgumentParser(
@@ -104,7 +104,18 @@ def install(args):
 
 def list(args):
     """Calls snipty logic for freeze"""
-    Snipty(project_root=args.path).list()
+    list_result = Snipty(project_root=args.path).list()
+
+    for package, checksum, url in list_result["installed"]:
+        print(package, checksum, url, sep="\t")
+
+    if list_result["not_installed"]:
+        print(
+            "\n! Following packages are NOT installed in the codebase"
+            " (you can install them running by $ snipty install)"
+        )
+        for package, url in list_result["not_installed"]:
+            print(package, url, sep="\t")
 
 
 def untrack(args):
@@ -121,9 +132,11 @@ def check(args):
     """Calls snipty logic for check"""
     im = Snipty(project_root=args.path)
     if args.snippet_name:
-        im.check(name=args.snippet_name, print_diff=args.diff)
+        exit = im.check(name=args.snippet_name, print_diff=args.diff)
     else:
-        im.check_all(print_diff=args.diff)
+        exit = im.check_all(print_diff=args.diff)
+
+    sys.exit(exit)
 
 
 if __name__ == "__main__":
@@ -143,10 +156,13 @@ if __name__ == "__main__":
         logger.setLevel(logging.CRITICAL)
 
     # Dispatch command
-    {
-        "install": install,
-        "list": list,
-        "check": check,
-        "untrack": untrack,
-        "uninstall": uninstall,
-    }[args.command](args)
+    try:
+        {
+            "install": install,
+            "list": list,
+            "check": check,
+            "untrack": untrack,
+            "uninstall": uninstall,
+        }[args.command](args)
+    except SniptyCriticalError as e:
+        sys.exit(e.code)
