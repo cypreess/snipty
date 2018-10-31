@@ -35,6 +35,21 @@ parser.add_argument(
 
 subparsers = parser.add_subparsers(title="Commands", dest="command")
 
+parser_untrack = subparsers.add_parser(
+    "untrack", help="Stop tracking snippet file but do not remove it from codebase"
+)
+parser_untrack.add_argument(
+    "snippet_name", metavar="<snippets name>", help="snippet name; can be a path"
+)
+
+parser_uninstall = subparsers.add_parser(
+    "uninstall", help="Remove snippet from codebase"
+)
+parser_uninstall.add_argument(
+    "snippet_name", metavar="<snippets name>", help="snippet name; can be a path"
+)
+
+
 parser_check = subparsers.add_parser("check", help="Check for snippets changes")
 
 parser_check.add_argument(
@@ -92,6 +107,16 @@ def list(args):
     Snipty(project_root=args.path).list()
 
 
+def untrack(args):
+    """Calls snipty logic for untrack"""
+    Snipty(project_root=args.path).untrack(name=args.snippet_name)
+
+
+def uninstall(args):
+    """Calls snipty logic for uninstall"""
+    Snipty(project_root=args.path).uninstall(name=args.snippet_name)
+
+
 def check(args):
     """Calls snipty logic for check"""
     im = Snipty(project_root=args.path)
@@ -118,4 +143,10 @@ if __name__ == "__main__":
         logger.setLevel(logging.CRITICAL)
 
     # Dispatch command
-    {"install": install, "list": list, "check": check}[args.command](args)
+    {
+        "install": install,
+        "list": list,
+        "check": check,
+        "untrack": untrack,
+        "uninstall": uninstall,
+    }[args.command](args)

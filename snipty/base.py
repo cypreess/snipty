@@ -1,5 +1,6 @@
 import filecmp
 import hashlib
+import shutil
 from typing import Union
 
 import yaml
@@ -65,6 +66,9 @@ class Snipty:
 
     # Helpers
 
+    def _get_package_full_path(self, name):
+        return os.path.join(self.project_root, name)
+
     def _dispatch_url(self, url) -> BaseDownloader:
         """Dispatch which downloader to use for a given URL"""
 
@@ -104,8 +108,8 @@ class Snipty:
             sys.exit(3)
 
         if not force and (
-            os.path.exists(os.path.join(self.project_root, name))
-            or os.path.exists(os.path.join(self.project_root, name))
+                os.path.exists(os.path.join(self.project_root, name))
+                or os.path.exists(os.path.join(self.project_root, name))
         ):
             logger.error(
                 "Error: Cannot install snippet '{}' because destination location "
@@ -175,11 +179,19 @@ class Snipty:
 
     def _package_checksum(self, path: str) -> Union[str, None]:
         fname = os.path.join(self.project_root, path)
+        h = hashlib.sha1()
+
         if os.path.isfile(fname):
-            h = hashlib.sha1()
             with open(fname, "rb") as f:
                 for chunk in iter(lambda: f.read(4096), b""):
                     h.update(chunk)
+            return h.hexdigest()
+
+        elif os.path.isdir(fname):
+            for package_file in os.listdir(fname):
+                with open(os.path.join(fname, package_file), "rb") as f:
+                    for chunk in iter(lambda: f.read(4096), b""):
+                        h.update(chunk)
             return h.hexdigest()
         else:
             return None
@@ -200,6 +212,36 @@ class Snipty:
             )
             for package, url in not_installed:
                 print(package, url, sep="\t")
+
+    # Command: Uninstall
+
+    @ensure_config_exists
+    @ensure_config_saved
+    def uninstall(self, name: str):
+        if name not in self.config():
+            logger.warning("❌ Snippet {} does not exists.".format(name))
+            sys.exit(1)
+
+        if not os.path.exists(self._get_package_full_path(name)):
+            logger.warning("❌ Snippet {} is not installed. You can still untrack it.".format(name))
+            sys.exit(1)
+
+        shutil.rmtree(self._get_package_full_path(name))
+
+        del self.config()[name]
+        logger.info("✔ Snippet {} has been uninstalled.".format(name))
+
+    # Command: Untrack
+
+    @ensure_config_exists
+    @ensure_config_saved
+    def untrack(self, name: str):
+        if name not in self.config():
+            logger.warning("❌ Snippet {} does not exists.".format(name))
+            sys.exit(1)
+
+        del self.config()[name]
+        logger.info("✔ Snippet {} has been untracked.".format(name))
 
     # Command: Check
 
@@ -255,7 +297,7 @@ class Snipty:
                 if result.diff_files or result.right_only:
 
                     files_of_interest = (
-                        result.same_files + result.diff_files + result.right_only
+                            result.same_files + result.diff_files + result.right_only
                     )
                     files_of_interest.sort()
 
@@ -322,9 +364,7 @@ class Snipty:
 
         exit_status = 0
         for name in self.config():
-            exit_status += self._check_package(
-                name=name, print_diff=print_diff
-            )
+            exit_status += self._check_package(name=name, print_diff=print_diff)
         sys.exit(exit_status)
 
     # Config helpers
