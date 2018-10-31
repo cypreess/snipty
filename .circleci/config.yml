@@ -83,7 +83,7 @@ jobs:
 
 workflows:
   version: 2
-  check_test_and_deploy:
+  black_and_test:
     jobs:
       - ensure_formatting
       - tests
