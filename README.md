@@ -1,4 +1,5 @@
-# snipty
+# snipty  [![CircleCI](https://circleci.com/gh/cypreess/snipty/tree/master.svg?style=svg)](https://circleci.com/gh/cypreess/snipty/tree/master)
+
 
 Snipty is a handy package manager tool that helps you to keep track of code snippets you use in codebase.
 Snipty allows to easy install dependent snippets into your code from `snipty.yml` file, similary how pip
