@@ -6,7 +6,6 @@ from typing import Union
 import yaml
 import logging
 import os
-import re
 import sys
 from difflib import Differ
 from functools import wraps
@@ -108,8 +107,8 @@ class Snipty:
             sys.exit(3)
 
         if not force and (
-                os.path.exists(os.path.join(self.project_root, name))
-                or os.path.exists(os.path.join(self.project_root, name))
+            os.path.exists(os.path.join(self.project_root, name))
+            or os.path.exists(os.path.join(self.project_root, name))
         ):
             logger.error(
                 "Error: Cannot install snippet '{}' because destination location "
@@ -223,7 +222,9 @@ class Snipty:
             sys.exit(1)
 
         if not os.path.exists(self._get_package_full_path(name)):
-            logger.warning("❌ Snippet {} is not installed. You can still untrack it.".format(name))
+            logger.warning(
+                "❌ Snippet {} is not installed. You can still untrack it.".format(name)
+            )
             sys.exit(1)
 
         shutil.rmtree(self._get_package_full_path(name))
@@ -297,7 +298,7 @@ class Snipty:
                 if result.diff_files or result.right_only:
 
                     files_of_interest = (
-                            result.same_files + result.diff_files + result.right_only
+                        result.same_files + result.diff_files + result.right_only
                     )
                     files_of_interest.sort()
 

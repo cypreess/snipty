@@ -37,4 +37,7 @@ def test_snipty_install_package():
             "__init__.py",
             "snippet.py",
         ]
-        assert_file_content(os.path.join(project_root, "snipty.yml"), "test/snippet.py: http://test.url/123.txt\n")
+        assert_file_content(
+            os.path.join(project_root, "snipty.yml"),
+            "test/snippet.py: http://test.url/123.txt\n",
+        )
