@@ -1,4 +1,4 @@
-# snipty  [![CircleCI](https://circleci.com/gh/cypreess/snipty/tree/master.svg?style=svg)](https://circleci.com/gh/cypreess/snipty/tree/master)
+# snipty  [![CircleCI](https://circleci.com/gh/cypreess/snipty/tree/master.svg?style=svg)](https://circleci.com/gh/cypreess/snipty/tree/master) [![Downloads](https://pepy.tech/badge/snipty)](https://pepy.tech/project/snipty) <a href="https://github.com/ambv/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a> 
 
 
 Snipty is a handy "like a package manager" tool that helps you to keep track of code snippets in a codebase.
