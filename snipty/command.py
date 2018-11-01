@@ -49,7 +49,6 @@ parser_uninstall.add_argument(
     "snippet_name", metavar="<snippets name>", help="snippet name; can be a path"
 )
 
-
 parser_check = subparsers.add_parser("check", help="Check for snippets changes")
 
 parser_check.add_argument(
@@ -74,7 +73,6 @@ parser_install.add_argument(
     help="Force installation even if snippet was already installed or path exists",
 )
 
-
 parser_install.add_argument(
     "snippet_name",
     nargs="?",
@@ -91,52 +89,54 @@ logger = logging.getLogger("snipty")
 logger.setLevel(logging.INFO)
 
 
-def install(args):
-    """Calls snipty logic depending on arguments"""
-    im = Snipty(project_root=args.path)
-    if args.snippet_name:
-        im.install_package(
-            name=args.snippet_name, url=args.snippet_url, force=args.force
-        )
-    else:
-        im.install_missing(force=args.force)
+class SniptyCommand:
+    def __init__(self, args):
+        self.args = args
+        self.snipty = Snipty(project_root=self.args.path)
 
+    def dispatch(self):
+        getattr(self, self.args.command)(self.args)
 
-def list(args):
-    """Calls snipty logic for freeze"""
-    list_result = Snipty(project_root=args.path).list()
+    def install(self, args):
+        """Calls snipty logic depending on arguments"""
+        if args.snippet_name:
+            self.snipty.install_package(
+                name=args.snippet_name, url=args.snippet_url, force=args.force
+            )
+        else:
+            self.snipty.install_missing(force=args.force)
 
-    for package, checksum, url in list_result["installed"]:
-        print(package, checksum, url, sep="\t")
+    def list(self, args):
+        """Calls snipty logic for freeze"""
+        list_result = self.snipty.list()
 
-    if list_result["not_installed"]:
-        print(
-            "\n! Following packages are NOT installed in the codebase"
-            " (you can install them running by $ snipty install)"
-        )
-        for package, url in list_result["not_installed"]:
-            print(package, url, sep="\t")
+        for package, checksum, url in list_result["installed"]:
+            print(package, checksum, url, sep="\t")
 
+        if list_result["not_installed"]:
+            print(
+                "\n! Following packages are NOT installed in the codebase"
+                " (you can install them running by $ snipty install)"
+            )
+            for package, url in list_result["not_installed"]:
+                print(package, url, sep="\t")
 
-def untrack(args):
-    """Calls snipty logic for untrack"""
-    Snipty(project_root=args.path).untrack(name=args.snippet_name)
+    def untrack(self, args):
+        """Calls snipty logic for untrack"""
+        self.snipty.untrack(name=args.snippet_name)
 
+    def uninstall(self, args):
+        """Calls snipty logic for uninstall"""
+        self.snipty.uninstall(name=args.snippet_name)
 
-def uninstall(args):
-    """Calls snipty logic for uninstall"""
-    Snipty(project_root=args.path).uninstall(name=args.snippet_name)
+    def check(self, args):
+        """Calls snipty logic for check"""
+        if args.snippet_name:
+            exit = self.snipty.check(name=args.snippet_name, print_diff=args.diff)
+        else:
+            exit = self.snipty.check_all(print_diff=args.diff)
 
-
-def check(args):
-    """Calls snipty logic for check"""
-    im = Snipty(project_root=args.path)
-    if args.snippet_name:
-        exit = im.check(name=args.snippet_name, print_diff=args.diff)
-    else:
-        exit = im.check_all(print_diff=args.diff)
-
-    sys.exit(exit)
+        sys.exit(exit)
 
 
 if __name__ == "__main__":
@@ -155,14 +155,7 @@ if __name__ == "__main__":
     elif args.quiet >= 3:
         logger.setLevel(logging.CRITICAL)
 
-    # Dispatch command
     try:
-        {
-            "install": install,
-            "list": list,
-            "check": check,
-            "untrack": untrack,
-            "uninstall": uninstall,
-        }[args.command](args)
+        SniptyCommand(args).dispatch()
     except SniptyCriticalError as e:
         sys.exit(e.code)
